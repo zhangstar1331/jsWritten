@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script type="module" src="Promise.js"></script>
+    <script>
+        (function () {
+            var STOP_VALUE = Symbol()//构造一个Symbol以表达特殊语义
+            var STOPPER_PROMISE = Promise.resolve(STOP_VALUE)
+            var DONE = {}
+            var WARN = {}
+            var ERROR = {}
+            var EXCEPTION = {}
+            var PROMISE_PATCH = {}
+            Promise.prototype._then = Promise.prototype.then//保留原本的then方法
+            Promise.prototype.then = function (onResolved, onRejected) {
+                return this._then(function (value) {//停掉后面的Promise链回调
+                    return value === STOP_VALUE ? STOP_VALUE : onResolved(value)
+                }, onRejected)
+            }
+            Promise.stop = function () {//跳过后面所有的promise
+                return STOPPER_PROMISE //不是每次返回一个新的Promise，可以节省内存
+            }
+            Promise.done = function (value) {
+                return Promise.resolve({
+                    flag: DONE,
+                    value
+                })
+            }
+            Promise.warn = function (value) {
+                return Promise.resolve({
+                    flag: WARN,
+                    value
+                })
+            }
+            Promise.error = function (value) {
+                return Promise.resolve({
+                    flag: ERROR,
+                    value
+                })
+            }
+            Promise.exception = function (value) {
+                return Promise.resolve({
+                    flag: EXCEPTION,
+                    value
+                })
+            }
+            Promise.prototype.done = function (cb) {
+                return this.then(result => {
+                    if (result && result.flag === DONE) {
+                        return cb(result.value)
+                    } else {
+                        return result
+                    }
+                })
+            }
+            Promise.prototype.warn = function (cb) {
+                return this.then(result => {
+                    if (result && result.flag === WARN) {
+                        return cb(result.value)
+                    } else {
+                        return result
+                    }
+                })
+            }
+            Promise.prototype.error = function (cb) {
+                return this.then(result => {
+                    if (result && result.flag === ERROR) {
+                        return cb(result.value)
+                    } else {
+                        return result
+                    }
+                })
+            }
+            Promise.prototype.exception = function (cb) {
+                return this.then(result => {
+                    if (result && result.flag === EXCEPTION) {
+                        return cb(result.value)
+                    } else {
+                        return result
+                    }
+                })
+            }
+            }())
+    </script>
+    <script>
+        new Promise(function (resolve, reject) {
+            console.log(111111111111)
+            resolve(42)
+        })
+            .then(function (value) {
+                console.log(value)
+                console.log("Big ERROR!!!")
+                return Promise.stop()
+            })
+            .catch(() => {
+                console.log(222222222222)
+            })
+            .then(() => {
+                console.log(333333333333)
+            })
+            .then(() => {
+                console.log(warn)
+                console.log(444444444444)
+            })
+            .catch(() => {
+                console.log(555555555555)
+            })
+            .then(() => {
+                console.log(666666666666)
+            })
+
+        new Promise((resolve, reject) => {
+            // resolve(Promise.stop())
+            // resolve(Promise.done(1))
+            // resolve(Promise.warn(2))
+            // resolve(Promise.error(3))
+            // resolve(Promise.exception(4))
+        })
+            .done(value => {
+                console.log(value)
+                return Promise.done(5)
+            })
+            .warn(value => {
+                console.log('warn', value)
+                return Promise.done(6)
+            })
+            .exception(value => {
+                console.log(value)
+                return Promise.warn(7)
+            })
+            .error(value => {
+                console.log(value)
+                return Promise.error(8)
+            })
+            .exception(value => {
+                console.log(value)
+                return
+            })
+            .done(value => {
+                console.log(value)
+                return Promise.warn(9)
+            })
+            .warn(value => {
+                console.log(value)
+            })
+            .error(value => {
+                console.log(value)
+            })
+    </script>
+</head>
+
+<body>
+
+</body>
+
+</html>
